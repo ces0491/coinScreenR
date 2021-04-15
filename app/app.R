@@ -1,0 +1,1 @@
+shinyApp(ui = ui.coinScreenR, server = server.coinScreenR)
