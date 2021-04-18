@@ -37,7 +37,7 @@ sidebar <- shinydashboard::dashboardSidebar(
   
   dateRangeInput(inputId = "dateRange",
                  label = "Select Date Range",
-                 start = Sys.Date() - 365*2,
+                 start = Sys.Date() - 500, # binance API allows max 500 historical records
                  end = Sys.Date()),
   
   selectizeInput(inputId = "freqSelect",
@@ -69,12 +69,23 @@ body <- shinydashboard::dashboardBody(
                             
                             fluidPage(
                               
-                              plotly::plotlyOutput("tickerTS") %>% withSpinner(),
+                              fluidRow(
+                                column(4, shinydashboard::tabBox(title = "Tweets", id = "tweets_tabbox", width = 12,
+                                                tabPanel(icon("calendar"), dataTableOutput("recent_tweets") %>% withSpinner()), 
+                                                tabPanel(icon("heart"), dataTableOutput("most_popular_tweets") %>% withSpinner()),
+                                                tabPanel(icon("retweet"), dataTableOutput("most_retweeted") %>% withSpinner())
+                                                )
+                                       ),
+                                column(8, plotly::plotlyOutput("tickerTS") %>% withSpinner()),  
+                              ),
                               
                               hr(),
                               
                               fluidRow(
-                                column(12, tableOutput("summaryTbl") %>% withSpinner())
+                                column(4, tags$div(HTML('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/currency.js">
+                                                        </script><div class="coinmarketcap-currency-widget" data-currencyid="1" data-base="USD" data-secondary="" data-ticker="true" data-rank="true" data-marketcap="true" data-volume="true" data-statsticker="true" data-stats="USD">
+                                                        </div>'))),
+                                column(8, tableOutput("summaryTbl") %>% withSpinner())
                               )
                             )
     ),
@@ -108,7 +119,7 @@ body <- shinydashboard::dashboardBody(
                             fluidPage(
                               div(tags$div(HTML('<i class="fa fa-info-circle"></i> 
                                                 Use this table to lookup a ticker by name if you are unsure about the symbol'))),
-                              
+                              br(),
                               DT::dataTableOutput(outputId = "searchTickerTbl") %>% withSpinner()
                             )
     ),

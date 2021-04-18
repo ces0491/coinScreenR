@@ -194,4 +194,67 @@ ensemble_tbl <- modeltime::modeltime_table(ensemble_fit_mean)
 ensemble_tbl %>% modeltime::combine_modeltime_tables(submodels_tbl) %>% 
   modeltime::modeltime_accuracy(rsample::testing(splits))
 
+##########################################################################################################################
+
+forcHorizon <- 30
+
+test_data <- fdoR::get_crypto_data(ticker = 'XRPBUSD', 
+                                   start_date = Sys.Date() - 500, 
+                                   end_date = Sys.Date(), 
+                                   frequency = 'daily')
+
+reqd_analysis_data <- test_data %>% 
+  dplyr::filter(variable == "close") %>% 
+  dplyr::select(ticker, date, value)
+
+split_data <-reqd_analysis_data %>% 
+  timetk::time_series_split(date_var = date, assess = forcHorizon, cumulative = TRUE)
+
+
+recipe <- recipes::recipe(value ~ date, rsample::training(split_data)) %>% 
+  timetk::step_timeseries_signature(date) %>% 
+  recipes::step_rm(tidyselect::matches("(.iso$)|(.xts$)|(day)|(hour)|(minute)|(second)|(am.pm)")) %>% 
+  recipes::step_normalize(date_index.num, date_month) %>%
+  recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
+
+
+models <- fit_forecasting_models(split_data, recipe)
+
+
+calibration_tbl <- models %>%
+  modeltime::modeltime_calibrate(rsample::testing(split_data))
+
+forc_plot <- calibration_tbl %>%
+  modeltime::modeltime_forecast(actual_data = reqd_analysis_data) %>%
+  modeltime::plot_modeltime_forecast(.interactive = TRUE)
+
+acc_tbl <- calibration_tbl %>%
+  modeltime::modeltime_accuracy() %>%
+  modeltime::table_modeltime_accuracy(.interactive = FALSE)
+
+# Remove underperforming models
+kp_models <- as.data.frame(acc_tbl) %>%
+  dplyr::mutate(rsq = as.numeric(rsq)) %>% 
+  dplyr::filter(!is.na(rsq),
+                rsq >= 0.3) %>% 
+  dplyr::pull(.model_id)
+
+calibration_tbl_new <- calibration_tbl %>% 
+  dplyr::filter(.model_id %in% kp_models)
+
+# Refit and Forecast Forward
+calibration_tbl_new %>% 
+  modeltime::modeltime_refit(reqd_analysis_data) %>%
+  modeltime::modeltime_forecast(h = forcHorizon, actual_data = reqd_analysis_data) %>%
+  modeltime::plot_modeltime_forecast(.interactive = TRUE)
+
+# ensemble
+
+ensemble_fit_mean <- submodels_tbl %>% 
+  modeltime.ensemble::ensemble_average(type = 'mean')
+
+ensemble_tbl <- modeltime::modeltime_table(ensemble_fit_mean)
+
+ensemble_tbl %>% modeltime::combine_modeltime_tables(submodels_tbl) %>% 
+  modeltime::modeltime_accuracy(rsample::testing(splits))
 

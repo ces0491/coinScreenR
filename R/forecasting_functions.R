@@ -1,19 +1,21 @@
+#' use modeltime workflows to setup ML models
+#'
+#' @param split_data list containing tbl_df of data split into test and training subsets 
+#' @param recipe a data recipe for your ML models
+#'
+#' @return a modeltime tbl_df containing your fitted models
+#' 
 fit_forecasting_models <- function(split_data, recipe){
   
   # for modeltime algos, we use recipe spec 1 where Date has role 'predictor'
   # non modeltime algos use spec 2 in which the role of date is changed to 'ID'
-  
   recipe_spec_2 <- recipe %>% 
     recipes::update_role(date, new_role = "ID")
   
   # auto arima
-  wflw_fit_arima <- workflows::workflow() %>% 
-    workflows::add_model(
-      modeltime::arima_reg() %>%
-        parsnip::set_engine("auto_arima") 
-    ) %>%
-    workflows::add_recipe(recipe) %>%
-    parsnip::fit(value ~ date, rsample::training(split_data))  
+  model_fit_arima <- modeltime::arima_reg() %>%
+    parsnip::set_engine("auto_arima") %>%
+    parsnip::fit(value ~ date, rsample::training(split_data))
   
   # prophet with regressors
   wflw_fit_prophet <- workflows::workflow() %>% 
@@ -76,7 +78,7 @@ fit_forecasting_models <- function(split_data, recipe){
   
   # modeltime wf
   submodels_tbl <- modeltime::modeltime_table(
-    wflw_fit_arima,
+    model_fit_arima,
     wflw_fit_prophet,
     wflw_fit_prophet_boost,
     wflw_fit_svm,

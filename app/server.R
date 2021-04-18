@@ -5,6 +5,9 @@ server.coinScreenR <- function(input, output, session) {
   output$summaryTbl <- renderTable(NULL)
   output$descriptionTxt <- renderText(NULL)
   output$tickerTS <- plotly::renderPlotly(NULL)
+  output$recent_tweets <- DT::renderDataTable(NULL)
+  output$most_popular_tweets <- DT::renderDataTable(NULL)
+  output$most_retweeted <- DT::renderDataTable(NULL)
   
   observeEvent(input$freqSelect, {
     
@@ -105,6 +108,35 @@ server.coinScreenR <- function(input, output, session) {
                                    rownames = FALSE,
                                    colnames = TRUE)
   
+  # twitter stuff
+  tweets <- eventReactive(input$submitBtn, {
+    withProgress(min = 0, max = 1, value = 0.2, message = "updating tweets", {
+      rtweet::search_tweets(input$tickerSelect, n = 100, include_rts = FALSE )
+    })
+  })
+  
+  most_popular_tweets <- reactive(most_popular(tweets(), n = 6 ))
+  most_retweeted_tweets <- reactive(most_retweeted(tweets(), n = 6))
+  recent_tweets <- reactive(most_recent(tweets(), n = 6))
+  
+  getTweets <- function(id){
+    n <- length(id)
+    withProgress(min = 0, max = n, value = 0, message = "extract tweets", {
+      
+      tibble::tibble( 
+        tweet = purrr::map( id, ~{ 
+          res <- embed_tweet(.) 
+          incProgress(amount = 1)
+          res
+        } )
+      ) %>% 
+        DT::datatable(options = list(pageLength = 3))
+    })
+  }
+  
+  output$most_popular_tweets <- renderDataTable(getTweets(most_popular_tweets()))
+  output$most_retweeted <- renderDataTable(getTweets(most_retweeted_tweets()))
+  output$recent_tweets <- renderDataTable(getTweets(recent_tweets()))
   
 #################################### Analysis Page ####################################
   
@@ -128,7 +160,7 @@ server.coinScreenR <- function(input, output, session) {
     recipes::recipe(value ~ date, rsample::training(split_data())) %...>% 
       timetk::step_timeseries_signature(date) %...>% 
       recipes::step_rm(tidyselect::matches("(.iso$)|(.xts$)|(day)|(hour)|(minute)|(second)|(am.pm)")) %...>% 
-      recipes::step_normalize(Date_index.num, Date_month) %...>%
+      recipes::step_normalize(date_index.num, date_month) %...>%
       recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
   })
   
@@ -167,7 +199,8 @@ server.coinScreenR <- function(input, output, session) {
       dplyr::rename(Name = name,
                     Symbol = symbol,
                     Slug = slug) %>% 
-      DT::datatable(., rownames = FALSE)
+      DT::datatable(., rownames = FALSE,
+                    options = list(lengthMenu = c(5, 10, 20, 50), pageLength = 20))
   })
    
 }

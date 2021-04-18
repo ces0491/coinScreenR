@@ -4,18 +4,21 @@ library(shinyWidgets)
 library(promises)
 library(future)
 library(shinycssloaders)
-library(modeltime)
+library(modeltime) # need to specify otherwise can't access underlying prophet functions when fitting models
 
 require(dateR)
 require(assertR)
+
+globalVariables(c("status_id", "id", "name","created_at", "retweet_count"))
 
 # multisession: Resolves futures asynchronously (in parallel) in separate R sessions running in the background on the same machine.
 future::plan(multisession)
 
 source("../R/plot_functions.R")
 source("../R/table_functions.R")
-source("../R/forecasting.R")
+source("../R/forecasting_functions.R")
+source("../R/twitter_functions.R")
 
 
-#get crypto listings
-crypto_config <- coinmarketcapr::get_crypto_listings()
+# Get a paginated list of all active cryptocurrencies with latest market data, sorted by CMC rank. 
+crypto_config <- coinmarketcapr::get_crypto_listings(currency = "USD", latest = TRUE)
