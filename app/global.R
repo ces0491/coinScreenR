@@ -9,7 +9,7 @@ library(modeltime) # need to specify otherwise can't access underlying prophet f
 require(dateR)
 require(assertR)
 
-globalVariables(c("status_id", "id", "name","created_at", "retweet_count"))
+globalVariables(c("status_id", "id", "created_at", "retweet_count"))
 
 # multisession: Resolves futures asynchronously (in parallel) in separate R sessions running in the background on the same machine.
 future::plan(multisession)
@@ -18,6 +18,7 @@ source("../R/plot_functions.R")
 source("../R/table_functions.R")
 source("../R/forecasting_functions.R")
 source("../R/twitter_functions.R")
+source("../R/sentiment_functions.R")
 
 
 # Get a paginated list of all active cryptocurrencies with latest market data, sorted by CMC rank. 

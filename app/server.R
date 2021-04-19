@@ -8,6 +8,7 @@ server.coinScreenR <- function(input, output, session) {
   output$recent_tweets <- DT::renderDataTable(NULL)
   output$most_popular_tweets <- DT::renderDataTable(NULL)
   output$most_retweeted <- DT::renderDataTable(NULL)
+  output$cmcWidget <- renderUI(NULL)
   
   observeEvent(input$freqSelect, {
     
@@ -90,53 +91,77 @@ server.coinScreenR <- function(input, output, session) {
   })
   
   summ_data <- eventReactive(input$submitBtn, {
-    crypto_config %>% 
-      dplyr::filter(symbol %in% c(input$tickerSelect, input$tickerCompare)) %>% 
-      dplyr::select(name, symbol, USD_price, USD_market_cap, USD_volume_24h, 
-                    USD_percent_change_90d, USD_percent_change_60d, USD_percent_change_30d,
-                    cmc_rank)
+    build_summary_table(crypto_config, tickers = c(input$tickerSelect, input$tickerCompare))
   })
   
   # render summary table
-  output$summaryTbl <- renderTable({summ_data()},
-                                   striped = TRUE,
-                                   hover = TRUE,
-                                   bordered = TRUE, 
-                                   width = '100%', 
-                                   align = 'l',
-                                   digits = 2,
-                                   rownames = FALSE,
-                                   colnames = TRUE)
+  output$summaryTbl <- DT::renderDataTable({summ_data()})
+  
+  # render coin market cap ticker widget
+  html_string <- eventReactive(input$submitBtn, {
+    
+    ccy_id <- crypto_config %>% dplyr::filter(symbol == input$tickerSelect) %>% dplyr::pull(id)
+    
+    widget_str <- glue::glue('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/currency.js">
+                          </script><div class="coinmarketcap-currency-widget" 
+                          data-currencyid= {as.character(ccy_id)} 
+                          data-base="ZAR" 
+                          data-secondary="USD" 
+                          data-ticker="true" 
+                          data-rank="true" 
+                          data-marketcap="true" 
+                          data-volume="true" 
+                          data-statsticker="true" 
+                          data-stats="USD">
+                          </div>')
+    
+    widget_str
+  })
+  
+  output$cmcWidget <- renderUI({
+    tags$div(HTML(html_string()))
+  })
   
   # twitter stuff
   tweets <- eventReactive(input$submitBtn, {
-    withProgress(min = 0, max = 1, value = 0.2, message = "updating tweets", {
-      rtweet::search_tweets(input$tickerSelect, n = 100, include_rts = FALSE )
+    
+    slug <- crypto_config %>% dplyr::filter(symbol == input$tickerSelect) %>% dplyr::pull(slug)
+    query <- paste0(input$tickerSelect, " OR ", slug)
+    
+      withProgress(min = 0, max = 1, value = 0.2, message = "updating tweets", {
+        rtweet::search_tweets(q = query, 
+                              n = 250, 
+                              include_rts = TRUE,
+                              `filter` = "verified", 
+                              lang = "en")
     })
   })
   
-  most_popular_tweets <- reactive(most_popular(tweets(), n = 6 ))
-  most_retweeted_tweets <- reactive(most_retweeted(tweets(), n = 6))
-  recent_tweets <- reactive(most_recent(tweets(), n = 6))
+  most_popular_tweets <- reactive({most_popular(tweets())})
+  most_retweeted_tweets <- reactive({most_retweeted(tweets())})
+  recent_tweets <- reactive({most_recent(tweets())})
   
   getTweets <- function(id){
     n <- length(id)
-    withProgress(min = 0, max = n, value = 0, message = "extract tweets", {
+    shiny::withProgress(min = 0, max = n, value = 0, message = "extract tweets", {
       
-      tibble::tibble( 
+      tbl <- tibble::tibble( 
         tweet = purrr::map( id, ~{ 
           res <- embed_tweet(.) 
-          incProgress(amount = 1)
+          shiny::incProgress(amount = 1)
           res
-        } )
-      ) %>% 
-        DT::datatable(options = list(pageLength = 3))
-    })
+        })
+      ) 
+  
+      twts <- DT::datatable(tbl, options = list(lengthMenu = c(1, 3, 5, 10)))
+      })
+    
+    twts
   }
   
-  output$most_popular_tweets <- renderDataTable(getTweets(most_popular_tweets()))
-  output$most_retweeted <- renderDataTable(getTweets(most_retweeted_tweets()))
-  output$recent_tweets <- renderDataTable(getTweets(recent_tweets()))
+  output$most_popular_tweets <- DT::renderDataTable(getTweets(most_popular_tweets()))
+  output$most_retweeted <- DT::renderDataTable(getTweets(most_retweeted_tweets()))
+  output$recent_tweets <- DT::renderDataTable(getTweets(recent_tweets()))
   
 #################################### Analysis Page ####################################
   

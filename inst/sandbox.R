@@ -184,15 +184,41 @@ refit_forc_viz <- submodels_refit_tbl %>%
 
 refit_forc_viz
 
-# ensemble
+#### ensemble
 
+# fit
 ensemble_fit_mean <- submodels_tbl %>% 
   modeltime.ensemble::ensemble_average(type = 'mean')
 
+# modeltime table
 ensemble_tbl <- modeltime::modeltime_table(ensemble_fit_mean)
 
-ensemble_tbl %>% modeltime::combine_modeltime_tables(submodels_tbl) %>% 
+# test accuracy
+ensemble_tbl %>% 
+  modeltime::combine_modeltime_tables(submodels_tbl) %>% 
   modeltime::modeltime_accuracy(rsample::testing(splits))
+
+ensemble_tbl %>% 
+  modeltime::modeltime_forecast(
+    new_data = rsample::testing(splits),
+    actual_data = data_prepared_tbl,
+    keep_data = TRUE
+  ) %>% 
+  dplyr::group_by(Symbol) %>% 
+  modeltime::plot_modeltime_forecast()
+
+ensemble_refit_tbl <- ensemble_tbl %>% 
+  modeltime::modeltime_refit(data_prepared_tbl)
+
+ensemble_refit_tbl %>% 
+  modeltime::modeltime_forecast(
+    new_data = future_tbl,
+    actual_data = data_prepared_tbl,
+    keep_data = TRUE
+  ) %>% 
+  dplyr::group_by(Symbol) %>% 
+  modeltime::plot_modeltime_forecast()
+
 
 ##########################################################################################################################
 

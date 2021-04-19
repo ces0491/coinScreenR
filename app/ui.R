@@ -70,22 +70,20 @@ body <- shinydashboard::dashboardBody(
                             fluidPage(
                               
                               fluidRow(
-                                column(4, shinydashboard::tabBox(title = "Tweets", id = "tweets_tabbox", width = 12,
-                                                tabPanel(icon("calendar"), dataTableOutput("recent_tweets") %>% withSpinner()), 
-                                                tabPanel(icon("heart"), dataTableOutput("most_popular_tweets") %>% withSpinner()),
-                                                tabPanel(icon("retweet"), dataTableOutput("most_retweeted") %>% withSpinner())
-                                                )
-                                       ),
+                                column(4, uiOutput("cmcWidget") %>% withSpinner()),
                                 column(8, plotly::plotlyOutput("tickerTS") %>% withSpinner()),  
                               ),
                               
                               hr(),
                               
                               fluidRow(
-                                column(4, tags$div(HTML('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/currency.js">
-                                                        </script><div class="coinmarketcap-currency-widget" data-currencyid="1" data-base="USD" data-secondary="" data-ticker="true" data-rank="true" data-marketcap="true" data-volume="true" data-statsticker="true" data-stats="USD">
-                                                        </div>'))),
-                                column(8, tableOutput("summaryTbl") %>% withSpinner())
+                                column(4, shinydashboard::tabBox(title = "Tweets", id = "tweets_tabbox", width = 12,
+                                                                tabPanel(icon("calendar"), DT::dataTableOutput("recent_tweets") %>% withSpinner()), 
+                                                                tabPanel(icon("heart"), DT::dataTableOutput("most_popular_tweets") %>% withSpinner()),
+                                                                tabPanel(icon("retweet"), DT::dataTableOutput("most_retweeted") %>% withSpinner())
+                                                                )
+                                       ),
+                                column(8, DT::dataTableOutput("summaryTbl") %>% withSpinner())
                               )
                             )
     ),
