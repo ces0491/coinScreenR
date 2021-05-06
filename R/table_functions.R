@@ -20,8 +20,7 @@ build_summary_table <- function(crypto_config, tickers) {
                                          paging = FALSE,
                                          pageLength = 10),
                           rownames = FALSE, 
-                          filter = 'none', 
-                          autoHideNavigation = TRUE) %>% 
+                          filter = 'none') %>% 
     DT::formatCurrency(columns = c('Price'),
                        currency = "$",
                        digits = 2,

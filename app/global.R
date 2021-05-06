@@ -18,8 +18,9 @@ source("../R/plot_functions.R")
 source("../R/table_functions.R")
 source("../R/forecasting_functions.R")
 source("../R/twitter_functions.R")
-source("../R/sentiment_functions.R")
+# source("../R/sentiment_functions.R")
 
 
-# Get a paginated list of all active cryptocurrencies with latest market data, sorted by CMC rank. 
+# Get a paginated list of all active cryptocurrencies with latest market data, sorted by CMC rank.
+coinmarketcapr::setup(api_key = Sys.getenv("coinmarketcap_api_key"))
 crypto_config <- coinmarketcapr::get_crypto_listings(currency = "USD", latest = TRUE)

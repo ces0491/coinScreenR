@@ -2,6 +2,7 @@
 prepare_ts_data <- function(price_df, freq) {
   
   n_tkr <- dplyr::n_distinct(price_df$ticker)
+  
   if(n_tkr > 1) {
     
     start_dts <- price_df %>% 
@@ -33,6 +34,7 @@ prepare_ts_data <- function(price_df, freq) {
       dplyr::ungroup()  
     
   } else {
+    
     result <- price_df %>% 
       dplyr::group_by(ticker) %>% 
       dplyr::mutate(change = (value / dplyr::lag(value))-1) %>%

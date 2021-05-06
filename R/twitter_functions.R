@@ -13,29 +13,32 @@
 #' @export
 #' 
 embed_tweet <- function(id) {
-  url <- paste0( "https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2FInterior%2Fstatus%2F", id)
-  tweet <- htmltools::HTML(jsonlite::fromJSON(url)$html)
   
-  class(tweet) <- c("tweet", class(tweet))
+  # url to produce json of tweet given the tweet id
+  url <- paste0("https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2FInterior%2Fstatus%2F", id)
+  # convert the json to a list
+  jsonlite::validate(url)
+  tweet_list <- jsonlite::fromJSON(url)
+  # convert the tweet url to HTML
+  tweet <- htmltools::HTML(tweet_list$html)
+  
   tweet
 }
 
-#' @importFrom htmltools html_print
-#' @export
-print.tweet <- function(x, ...) {
-  htmltools::html_print(x)
-  invisible(x)
-}
-
-
+#' @param tweets tweet ids
+#' @param n number of tweets
+#' @param var variable to filter on
+#'
 #' @importFrom rlang enquo
+#' 
 most <- function(tweets, n = 10, var) {
+  
   var <- rlang::enquo(var)
+  
   tweets %>% 
     dplyr::top_n(n, !!var ) %>% 
     dplyr::arrange(desc(favorite_count)) %>% 
     dplyr::pull(status_id)
-  
 }
 
 #' most popular tweets
@@ -64,10 +67,4 @@ most_recent <- function(tweets, n = 10) {
     dplyr::arrange(desc(created_at)) %>% 
     head(n) %>% 
     dplyr::pull(status_id)
-}
-
-#' @importFrom dplyr bind_rows
-update_search <- function( data, ... ){
-  res <- search_tweets( ... )
-  bind_rows( filter( data, ! status_id %in% res$status_id  ), res )
 }

@@ -1,4 +1,5 @@
-twts <- rtweet::search_tweets("BTC", n = 250, include_rts = TRUE, `filter` = "verified", lang = "en")
+twts <- rtweet::search_tweets("BTC", n = 250, include_rts = TRUE, filter = "verified", lang = "en",
+                              token = readRDS(Sys.getenv("TWITTER_PAT")))
 
 twt_reqd <- dplyr::select(twts, screen_name, text)
 

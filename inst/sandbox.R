@@ -224,7 +224,7 @@ ensemble_refit_tbl %>%
 
 forcHorizon <- 30
 
-test_data <- fdoR::get_crypto_data(ticker = 'XRPBUSD', 
+test_data <- fdoR::get_crypto_data(ticker = c('BTCBUSD', 'XRPBUSD', 'DOTBUSD'), 
                                    start_date = Sys.Date() - 500, 
                                    end_date = Sys.Date(), 
                                    frequency = 'daily')

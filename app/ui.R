@@ -70,21 +70,28 @@ body <- shinydashboard::dashboardBody(
                             fluidPage(
                               
                               fluidRow(
-                                column(4, uiOutput("cmcWidget") %>% withSpinner()),
-                                column(8, plotly::plotlyOutput("tickerTS") %>% withSpinner()),  
+                                column(12, plotly::plotlyOutput("tickerTS") %>% withSpinner()),  
+                              ),
+                              
+                              hr(),
+                              
+                              fluidRow(
+                                column(12, DT::dataTableOutput("summaryTbl") %>% withSpinner())
                               ),
                               
                               hr(),
                               
                               fluidRow(
                                 column(4, shinydashboard::tabBox(title = "Tweets", id = "tweets_tabbox", width = 12,
-                                                                tabPanel(icon("calendar"), DT::dataTableOutput("recent_tweets") %>% withSpinner()), 
-                                                                tabPanel(icon("heart"), DT::dataTableOutput("most_popular_tweets") %>% withSpinner()),
-                                                                tabPanel(icon("retweet"), DT::dataTableOutput("most_retweeted") %>% withSpinner())
-                                                                )
+                                                                 tabPanel(icon("retweet"), DT::dataTableOutput("most_retweeted") %>% withSpinner()),
+                                                                 tabPanel(icon("heart"), DT::dataTableOutput("most_popular_tweets") %>% withSpinner()),
+                                                                 tabPanel(icon("calendar"), DT::dataTableOutput("recent_tweets") %>% withSpinner())
+                                                                 )
                                        ),
-                                column(8, DT::dataTableOutput("summaryTbl") %>% withSpinner())
-                              )
+                                column(4, uiOutput("cmcWidget") %>% withSpinner()),
+                                column(4, uiOutput("cmcWidget2") %>% withSpinner())
+                              )  
+                              
                             )
     ),
     
