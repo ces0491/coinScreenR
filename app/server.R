@@ -5,11 +5,13 @@ server.coinScreenR <- function(input, output, session) {
   output$summaryTbl <- renderTable(NULL)
   output$descriptionTxt <- renderText(NULL)
   output$tickerTS <- plotly::renderPlotly(NULL)
+  
   output$recent_tweets <- DT::renderDataTable(NULL)
   output$most_popular_tweets <- DT::renderDataTable(NULL)
   output$most_retweeted <- DT::renderDataTable(NULL)
+  
   output$cmcWidget <- renderUI(NULL)
-  output$cmcWidget2 <- renderUI(NULL)
+  output$correl <- plotly::renderPlotly(NULL)
   
   output$plotForcast <- plotly::renderPlotly(NULL)
   output$analysisTbl <- renderDataTable(NULL)
@@ -82,8 +84,13 @@ server.coinScreenR <- function(input, output, session) {
     ttl <- ""
     x <- list(title = "")
     y <- list(title = "")
-    slider_min <- min(ts_plot_data()$date)
-      
+    
+    if(input$dateRange[1] < input$dateRange[2] - 90) {
+      min_dt <- input$dateRange[2] - 90  # focus data on last 3m if request more than 3m history
+    } else {
+      min_dt <- NULL
+    }
+    
     ts_plot_data() %...>%
       plotly::plot_ly(., x = ~date, y = ~plot_value, mode = 'lines', linetype = ~ticker,
                       text = ~ticker,
@@ -93,7 +100,7 @@ server.coinScreenR <- function(input, output, session) {
                                              "<extra></extra>")
       ) %...>% 
       plotly::layout(title = ttl, xaxis = x, yaxis = y) %...>%
-      plotly::rangeslider(start = slider_min, end = input$dateRange[2])
+      plotly::rangeslider(start = min_dt, end = input$dateRange[2])
     
   })
   
@@ -103,6 +110,32 @@ server.coinScreenR <- function(input, output, session) {
   
   # render summary table
   output$summaryTbl <- DT::renderDataTable({summ_data()})
+  
+  # render correl mx
+  corr_data <- eventReactive(input$submitBtn, {
+    
+    reqd_data <- data() %...>% 
+      dplyr::filter(variable == 'close') %...>% 
+      tidyr::spread(ticker, value) %...>% 
+      dplyr::select(-date, -variable)
+    
+   reqd_data %...>% 
+      stats::cor(., use = "pairwise.complete.obs", method = "pearson")
+    
+  })
+  
+  output$correl <- plotly::renderPlotly({
+  
+    corr_data() %...>%
+      ggcorrplot::ggcorrplot(.,
+                             method = "square",
+                             type = "lower",
+                             show.legend = TRUE,
+                             show.diag = TRUE, 
+                             lab = TRUE) %...>%
+      plotly::ggplotly()
+    
+  })
   
   # render coin market cap ticker widget
   html_string <- eventReactive(input$submitBtn, {
@@ -128,28 +161,7 @@ server.coinScreenR <- function(input, output, session) {
   output$cmcWidget <- renderUI({
     tags$div(HTML(html_string()))
   })
-  
-  html_string_w2 <- eventReactive(input$submitBtn, {
-    
-    ccy_id <- paste(
-      crypto_config %>% dplyr::filter(symbol %in% c(input$tickerSelect, input$tickerCompare)) %>% dplyr::pull(id), 
-      collapse = ",")
-    
-    widget_str2 <- glue::glue('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/coinPriceBlock.js">
-                             </script><div id="coinmarketcap-widget-coin-price-block" 
-                             coins={ccy_id} 
-                             currency="USD" 
-                             theme="light" 
-                             transparent="true" 
-                             show-symbol-logo="true">
-                             </div>')
-    
-    widget_str2
-  })
-  
-  output$cmcWidget2 <- renderUI({
-    tags$div(HTML(html_string_w2()))
-  })
+
   
   ########### twitter stuff
   
@@ -207,46 +219,39 @@ server.coinScreenR <- function(input, output, session) {
 #################################### Analysis Page ####################################
   
   # prepare data for forecasting
-  reqd_analysis_data <- reactive({
-    data() %...>% 
-      dplyr::filter(ticker == input$tickerSelect) %...>% 
-      dplyr::filter(variable == "close") %...>% 
-      dplyr::select(ticker, date, value)
+  mdl_forc_list <- reactive({
+    
+    ticker_x <- paste0(input$tickerSelect, input$tickerBase)
+    forcHorizon <- input$forcHorizon
+    
+    data() %...>%
+      dplyr::filter(ticker == ticker_x) %...>%
+      dplyr::filter(variable == "close") %...>%
+      dplyr::select(ticker, date, value) %...>% 
+      fit_forecasting_models(., forcHorizon)
+
   })
-  
-  split_data <- eventReactive(input$submitBtn,{
-    reqd_analysis_data() %...>% 
-      timetk::time_series_split(date_var = date, assess = input$forcHorizon, cumulative = TRUE)
-  })
-  
-  recipe <- reactive({
-      recipes::recipe(value ~ date, rsample::training(split_data())) %...>% 
-      timetk::step_timeseries_signature(date) %...>% 
-      recipes::step_rm(tidyselect::matches("(.iso$)|(.xts$)|(day)|(hour)|(minute)|(second)|(am.pm)")) %...>% 
-      recipes::step_normalize(date_index.num, date_month) %...>%
-      recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
-  })
-  
-  models <- eventReactive(input$submitBtn,{
-    future_promise({
-      fit_forecasting_models(split_data = split_data(), recipe = recipe())
-    })
-  })
-  
-  calibration_tbl <- eventReactive(input$submitBtn,{
-    models() %...>%
-      modeltime::modeltime_calibrate(rsample::testing(split_data()))
-  })
-  
-  
+
   mdl_forc <- reactive({
-    calibration_tbl() %...>%
-      modeltime::modeltime_forecast(actual_data = reqd_analysis_data())
+    
+    mdl_forc_list() %...>% (function(mdl_list) {
+      
+      calib_tbl <- mdl_list$calibrate
+      reqd_data <- mdl_list$reqd_data
+      
+      calib_tbl %>%
+        modeltime::modeltime_forecast(actual_data = reqd_data)
+    })
+      
   })
-  # prepare data for fair value analysis
   
   # render  plot of forecast
-  output$plotForcast <- plotly::renderPlotly({mdl_forc() %...>% modeltime::plot_modeltime_forecast(.)})
+  output$plotForcast <- plotly::renderPlotly({
+    mdl_forc() %...>%
+      modeltime::plot_modeltime_forecast(.interactive = FALSE)
+  })
+  
+  # prepare data for fair value analysis
   
   # plot FV boxplot
   

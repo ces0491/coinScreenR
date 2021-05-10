@@ -88,8 +88,8 @@ body <- shinydashboard::dashboardBody(
                                                                  tabPanel(icon("calendar"), DT::dataTableOutput("recent_tweets") %>% withSpinner())
                                                                  )
                                        ),
-                                column(4, uiOutput("cmcWidget") %>% withSpinner()),
-                                column(4, uiOutput("cmcWidget2") %>% withSpinner())
+                                column(4, plotly::plotlyOutput("correl") %>% withSpinner()),
+                                column(4, uiOutput("cmcWidget") %>% withSpinner())
                               )  
                               
                             )

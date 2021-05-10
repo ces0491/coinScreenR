@@ -5,7 +5,18 @@
 #'
 #' @return a modeltime tbl_df containing your fitted models
 #' 
-fit_forecasting_models <- function(split_data, recipe){
+fit_forecasting_models <- function(data, forcHorizon){
+  
+  split_data <- data %>% 
+    timetk::time_series_split(date_var = date, assess = forcHorizon, cumulative = TRUE)
+  
+  recipe <- split_data %>% 
+    rsample::training(.) %>% 
+    recipes::recipe(value ~ date, data = .) %>%
+    timetk::step_timeseries_signature(date) %>%
+    recipes::step_rm(tidyselect::matches("(.iso$)|(.xts$)|(day)|(hour)|(minute)|(second)|(am.pm)")) %>%
+    recipes::step_normalize(date_index.num, date_month) %>%
+    recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
   
   # for modeltime algos, we use recipe spec 1 where Date has role 'predictor'
   # non modeltime algos use spec 2 in which the role of date is changed to 'ID'
@@ -87,6 +98,15 @@ fit_forecasting_models <- function(split_data, recipe){
     workflow_fit_glmnet
   )
   
-  submodels_tbl
+  # calibrate
+  calibration_tbl <- submodels_tbl %>% 
+    modeltime::modeltime_calibrate(rsample::testing(split_data))
+  
+  result <- list(reqd_data = data,
+                 split = split_data,
+                 submodels = submodels_tbl,
+                 calibrate = calibration_tbl)
+  
+  result
 }
 

@@ -230,6 +230,7 @@ test_data <- fdoR::get_crypto_data(ticker = c('BTCBUSD', 'XRPBUSD', 'DOTBUSD'),
                                    frequency = 'daily')
 
 reqd_analysis_data <- test_data %>% 
+  dplyr::filter(ticker == "BTCBUSD") %>% 
   dplyr::filter(variable == "close") %>% 
   dplyr::select(ticker, date, value)
 
@@ -237,22 +238,33 @@ split_data <-reqd_analysis_data %>%
   timetk::time_series_split(date_var = date, assess = forcHorizon, cumulative = TRUE)
 
 
-recipe <- recipes::recipe(value ~ date, rsample::training(split_data)) %>% 
+recipe <- split_data %>% 
+  rsample::training(.) %>% 
+  recipes::recipe(value ~ date, data = .) %>% 
   timetk::step_timeseries_signature(date) %>% 
   recipes::step_rm(tidyselect::matches("(.iso$)|(.xts$)|(day)|(hour)|(minute)|(second)|(am.pm)")) %>% 
   recipes::step_normalize(date_index.num, date_month) %>%
   recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
 
 
-models <- fit_forecasting_models(split_data, recipe)
+models <- fit_forecasting_models(reqd_analysis_data, forcHorizon)
 
+calibration <- models$calibrate
+forc <- models$forecast
+reqd_data <- models$reqd_data
 
-calibration_tbl <- models %>%
-  modeltime::modeltime_calibrate(rsample::testing(split_data))
+calibration %>%
+    modeltime::modeltime_forecast(actual_data = reqd_data) %>%
+    modeltime::plot_modeltime_forecast(.interactive = TRUE)
 
-forc_plot <- calibration_tbl %>%
-  modeltime::modeltime_forecast(actual_data = reqd_analysis_data) %>%
-  modeltime::plot_modeltime_forecast(.interactive = TRUE)
+# calibration_tbl <- models %>%
+#   modeltime::modeltime_calibrate(rsample::testing(split_data))
+
+# forc_plot <- calibration_tbl %>%
+#   modeltime::modeltime_forecast(actual_data = reqd_analysis_data) %>%
+#   modeltime::plot_modeltime_forecast(.interactive = TRUE)
+
+modeltime::plot_modeltime_forecast(models, .interactive = TRUE)
 
 acc_tbl <- calibration_tbl %>%
   modeltime::modeltime_accuracy() %>%
@@ -284,3 +296,6 @@ ensemble_tbl <- modeltime::modeltime_table(ensemble_fit_mean)
 ensemble_tbl %>% modeltime::combine_modeltime_tables(submodels_tbl) %>% 
   modeltime::modeltime_accuracy(rsample::testing(splits))
 
+###########################################################################
+
+crypto_data <- readRDS('./inst/extdata/crypto_price_data.rds')
