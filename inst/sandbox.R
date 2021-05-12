@@ -222,7 +222,7 @@ ensemble_refit_tbl %>%
 
 ##########################################################################################################################
 
-forcHorizon <- 30
+forcHorizon <- 180
 
 test_data <- fdoR::get_crypto_data(ticker = c('BTCBUSD', 'XRPBUSD', 'DOTBUSD'), 
                                    start_date = Sys.Date() - 500, 
@@ -234,37 +234,17 @@ reqd_analysis_data <- test_data %>%
   dplyr::filter(variable == "close") %>% 
   dplyr::select(ticker, date, value)
 
-split_data <-reqd_analysis_data %>% 
-  timetk::time_series_split(date_var = date, assess = forcHorizon, cumulative = TRUE)
-
-
-recipe <- split_data %>% 
-  rsample::training(.) %>% 
-  recipes::recipe(value ~ date, data = .) %>% 
-  timetk::step_timeseries_signature(date) %>% 
-  recipes::step_rm(tidyselect::matches("(.iso$)|(.xts$)|(day)|(hour)|(minute)|(second)|(am.pm)")) %>% 
-  recipes::step_normalize(date_index.num, date_month) %>%
-  recipes::step_dummy(recipes::all_nominal(), one_hot = TRUE)
-
 
 models <- fit_forecasting_models(reqd_analysis_data, forcHorizon)
 
-calibration <- models$calibrate
+calibration_tbl <- models$calibrate
 forc <- models$forecast
 reqd_data <- models$reqd_data
 
-calibration %>%
+calibration_tbl %>%
     modeltime::modeltime_forecast(actual_data = reqd_data) %>%
-    modeltime::plot_modeltime_forecast(.interactive = TRUE)
+    modeltime::plot_modeltime_forecast(.interactive = FALSE)
 
-# calibration_tbl <- models %>%
-#   modeltime::modeltime_calibrate(rsample::testing(split_data))
-
-# forc_plot <- calibration_tbl %>%
-#   modeltime::modeltime_forecast(actual_data = reqd_analysis_data) %>%
-#   modeltime::plot_modeltime_forecast(.interactive = TRUE)
-
-modeltime::plot_modeltime_forecast(models, .interactive = TRUE)
 
 acc_tbl <- calibration_tbl %>%
   modeltime::modeltime_accuracy() %>%
@@ -274,7 +254,7 @@ acc_tbl <- calibration_tbl %>%
 kp_models <- as.data.frame(acc_tbl) %>%
   dplyr::mutate(rsq = as.numeric(rsq)) %>% 
   dplyr::filter(!is.na(rsq),
-                rsq >= 0.3) %>% 
+                rsq >= 0.1) %>% 
   dplyr::pull(.model_id)
 
 calibration_tbl_new <- calibration_tbl %>% 
@@ -282,19 +262,27 @@ calibration_tbl_new <- calibration_tbl %>%
 
 # Refit and Forecast Forward
 calibration_tbl_new %>% 
-  modeltime::modeltime_refit(reqd_analysis_data) %>%
-  modeltime::modeltime_forecast(h = forcHorizon, actual_data = reqd_analysis_data) %>%
-  modeltime::plot_modeltime_forecast(.interactive = TRUE)
+  modeltime::modeltime_refit(models$reqd_data) %>%
+  modeltime::modeltime_forecast(h = forcHorizon, actual_data = models$reqd_data) %>%
+  modeltime::plot_modeltime_forecast(.interactive = FALSE)
 
 # ensemble
 
-ensemble_fit_mean <- submodels_tbl %>% 
-  modeltime.ensemble::ensemble_average(type = 'mean')
+ensemble_fit_mean <- models$submodels %>% 
+  modeltime.ensemble::ensemble_average(type = 'median')
 
 ensemble_tbl <- modeltime::modeltime_table(ensemble_fit_mean)
 
-ensemble_tbl %>% modeltime::combine_modeltime_tables(submodels_tbl) %>% 
-  modeltime::modeltime_accuracy(rsample::testing(splits))
+ensemble_tbl %>% 
+  modeltime::combine_modeltime_tables(models$submodels) %>% 
+  modeltime::modeltime_accuracy(rsample::testing(models$split))
+
+ensemble_tbl %>%
+  modeltime::modeltime_forecast(
+    new_data = rsample::testing(models$split),
+    actual_data = models$reqd_data
+  ) %>%
+  modeltime::plot_modeltime_forecast(.interactive = FALSE)
 
 ###########################################################################
 

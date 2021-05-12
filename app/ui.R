@@ -5,7 +5,11 @@ sidebar <- shinydashboard::dashboardSidebar(
   shinydashboard::sidebarMenu(
     shinydashboard::menuItem("Menu", tabName = "overview", icon = icon("bars"), startExpanded = FALSE,
                              shinydashboard::menuSubItem("Overview", tabName = "overview", icon = icon("coins")),
-                             shinydashboard::menuSubItem("Analysis", tabName = "analysis", icon = icon("chart-line")),
+                             shinydashboard::menuSubItem("Compare", tabName = "compare", icon = icon("list")),
+                             shinydashboard::menuSubItem("Sentiment", tabName = "sentiment", icon = icon("commenting-o")),
+                             shinydashboard::menuSubItem("Forecast", tabName = "forecast", icon = icon("chart-line")),
+                             shinydashboard::menuSubItem("Breakeven", tabName = "breakeven", icon = icon("balance-scale")),
+                             shinydashboard::menuSubItem("Fair Value", tabName = "fv", icon = icon("area-chart")),
                              shinydashboard::menuSubItem("Lookup", tabName = "lookup", icon = icon("search")),
                              shinydashboard::menuSubItem("Trade", tabName = "trade", icon = icon("briefcase"))
                              )
@@ -42,7 +46,7 @@ sidebar <- shinydashboard::dashboardSidebar(
   
   selectizeInput(inputId = "freqSelect",
                  label = "Select Frequency",
-                 choices = list("Daily" = "daily", "Weekly" = "weekly", "Monthly" = "monthly", "Quarterly" = "quarterly"),
+                 choices = list("Daily" = "1d", "Weekly" = "1w", "Monthly" = "1M"),
                  selected = "Daily",
                  multiple = FALSE),
   
@@ -95,7 +99,7 @@ body <- shinydashboard::dashboardBody(
                             )
     ),
     
-    shinydashboard::tabItem(tabName = "analysis", h2("Analysis"),
+    shinydashboard::tabItem(tabName = "forecast", h2("Forecast"),
                             
                             fluidPage(
                               

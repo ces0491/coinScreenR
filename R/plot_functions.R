@@ -1,5 +1,5 @@
 
-prepare_ts_data <- function(price_df, freq) {
+prepare_ts_data <- function(price_df) {
   
   n_tkr <- dplyr::n_distinct(price_df$ticker)
   
@@ -22,7 +22,6 @@ prepare_ts_data <- function(price_df, freq) {
       dplyr::arrange(date) %>% 
       dplyr::filter(date >= min_dt,
                     date<= max_dt) %>% 
-      dateR::to_period(., freq) %>% 
       dplyr::ungroup()
       
     result <- clean_dts_df %>% 

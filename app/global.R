@@ -6,14 +6,12 @@ library(future)
 library(shinycssloaders)
 library(modeltime) # need to specify otherwise can't access underlying prophet functions when fitting models
 
-require(dateR)
-require(assertR)
-
 globalVariables(c("status_id", "id", "created_at", "retweet_count"))
 
 # multisession: Resolves futures asynchronously (in parallel) in separate R sessions running in the background on the same machine.
 future::plan(multisession)
 
+source("../R/get_data.R")
 source("../R/plot_functions.R")
 source("../R/table_functions.R")
 source("../R/forecasting_functions.R")

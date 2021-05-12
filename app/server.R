@@ -14,15 +14,14 @@ server.coinScreenR <- function(input, output, session) {
   output$correl <- plotly::renderPlotly(NULL)
   
   output$plotForcast <- plotly::renderPlotly(NULL)
-  output$analysisTbl <- renderDataTable(NULL)
-  output$fvBox <- plotly::renderPlotly(NULL)
+  # output$analysisTbl <- renderDataTable(NULL)
+  # output$fvBox <- plotly::renderPlotly(NULL)
   
   observeEvent(input$freqSelect, {
     
     forc_periods <- dplyr::case_when(input$freqSelect == "daily" ~ "Days",
                                      input$freqSelect == "weekly" ~ "Weeks",
-                                     input$freqSelect == "monthly" ~ "Months",
-                                     input$freqSelect == "quarterly" ~ "Quarters")
+                                     input$freqSelect == "monthly" ~ "Months")
     
     updateNumericInput(inputId = "forcHorizon", label = paste0("Forecast Horizon (", forc_periods, ")"))
     
@@ -39,7 +38,7 @@ server.coinScreenR <- function(input, output, session) {
   })
   
   
-#################################### Sidebar ####################################
+########################################################## Sidebar ####################################
   
   # render description for the selected ticker
   desc_text <- reactive({
@@ -49,8 +48,12 @@ server.coinScreenR <- function(input, output, session) {
   })
   output$descriptionTxt <- renderText({paste0('<p style="text-align:justify;font-size:14px;">',desc_text(),'</p>')})
   
+
+######################################################### Overview ####################################
   
-#################################### Main Overview Page ####################################
+  
+    
+####################################################### Compare Page ####################################
   
   # retrieve live crypto price data
   data <- eventReactive(input$submitBtn, {
@@ -61,10 +64,10 @@ server.coinScreenR <- function(input, output, session) {
     end_dt <- input$dateRange[2]
     freq <- input$freqSelect
     
-    future_promise({fdoR::get_crypto_data(ticker = ticker_xs, 
-                                          start_date = start_dt, 
-                                          end_date = end_dt, 
-                                          frequency = freq)
+    future_promise({get_crypto_data(ticker = ticker_xs, 
+                                    start_date = start_dt, 
+                                    end_date = end_dt, 
+                                    frequency = freq)
     })
   })
  
@@ -74,7 +77,7 @@ server.coinScreenR <- function(input, output, session) {
     data() %...>%
       dplyr::filter(variable == "close") %...>%
       dplyr::select(ticker, date, variable, value) %...>%
-      prepare_ts_data(., input$freqSelect)
+      prepare_ts_data(.)
     
   })
   
@@ -163,7 +166,7 @@ server.coinScreenR <- function(input, output, session) {
   })
 
   
-  ########### twitter stuff
+  ######################################################### twitter stuff ##############################
   
   tweet_df <- eventReactive(input$submitBtn, {
     
@@ -175,7 +178,7 @@ server.coinScreenR <- function(input, output, session) {
     
     withProgress(min = 0, max = 1, value = 0.2, message = "updating tweets", {
       rtweet::search_tweets(q = query, 
-                            n = 250, 
+                            n = 500, 
                             include_rts = TRUE,
                             filter = "verified", 
                             lang = "en",
@@ -216,7 +219,7 @@ server.coinScreenR <- function(input, output, session) {
     tibblefy_tweet(recent_tweets())
     )
   
-#################################### Analysis Page ####################################
+########################################################## Forecast Page ####################################
   
   # prepare data for forecasting
   mdl_forc_list <- reactive({
@@ -258,7 +261,7 @@ server.coinScreenR <- function(input, output, session) {
   # render summary stat table
    
   
-#################################### Crypto Lookup Page ####################################
+##################################################### Lookup Page ####################################
   
   # render search table
   output$searchTickerTbl <- DT::renderDT({

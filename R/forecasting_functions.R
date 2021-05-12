@@ -79,12 +79,20 @@ fit_forecasting_models <- function(data, forcHorizon){
     parsnip::fit(rsample::training(split_data))
   
   # elastic net
-  workflow_fit_glmnet <- workflows::workflow() %>%
+  wflw_fit_glmnet <- workflows::workflow() %>%
     workflows::add_model(
       parsnip::linear_reg(penalty = 0.01, mixture = 0.5) %>%
         parsnip::set_engine("glmnet")
     ) %>%
     workflows::add_recipe(recipe_spec_2) %>%
+    parsnip::fit(rsample::training(split_data))
+  
+  wflw_fit_nnetar <- workflows::workflow() %>%
+    workflows::add_model(
+      nnetar_reg() %>%
+    parsnip::set_engine("nnetar")
+    ) %>%
+    workflows::add_recipe(recipe) %>%
     parsnip::fit(rsample::training(split_data))
   
   # modeltime wf
@@ -95,7 +103,8 @@ fit_forecasting_models <- function(data, forcHorizon){
     wflw_fit_svm,
     wflw_fit_xgboost,
     wflw_fit_rf,
-    workflow_fit_glmnet
+    wflw_fit_glmnet,
+    wflw_fit_nnetar
   )
   
   # calibrate
