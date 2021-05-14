@@ -33,7 +33,7 @@ get_crypto_data <- function(tickers, start_date, end_date, frequency = c("12h", 
     } else {
       test_if_match <- c('symbol', 'close_time', 'open', 'high', 'low', 'close', 'volume') %in% names(crypto_data)
       if (!all(test_if_match)) {
-        stop(msg)
+        stop("missing variable in crypto data")
       }
     }
     
@@ -60,3 +60,33 @@ get_crypto_data <- function(tickers, start_date, end_date, frequency = c("12h", 
   
   crypto_data_long
 }
+
+# commented out to remove webScrapeR dependency
+# uncomment and run to update ratings data. In theory ratings shouldn't change too frequently
+
+# get_crypto_rating <- function() {
+#   
+#   conn <- webScrapeR::connect_session('https://tokeninsight.com/cryptocurrencies')
+#   tokeninsight <- webScrapeR::scrape_table(conn$session, xpath = '//*[@id="container"]/div/div[3]/div[2]/div[1]/div[3]/div/div[2]/table')
+#   
+#   renamed_df <- tokeninsight %>% 
+#     dplyr::select(-X11, -X12) %>% 
+#     dplyr::rename(Rank = X1, 
+#                   Name = X2, 
+#                   Token = X3, 
+#                   Rating = X4, 
+#                   Price = X5, 
+#                   Change_24H = X6, 
+#                   Change_7D = X7, 
+#                   Circulating_Supply = X8, 
+#                   Volume_24h = X9,
+#                   Market_Cap = X10)
+#   
+#   reqd_df <- renamed_df %>% 
+#     dplyr::select(Token, Rating) %>% 
+#     dplyr::rename(symbol = Token)
+#   
+#   saveRDS(reqd_df, './inst/extdata/tokeninsightRating.rds')
+#   
+#   return(reqd_df)
+# }

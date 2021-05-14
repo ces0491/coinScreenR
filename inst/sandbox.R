@@ -287,3 +287,4 @@ ensemble_tbl %>%
 ###########################################################################
 
 crypto_data <- readRDS('./inst/extdata/crypto_price_data.rds')
+

@@ -1,19 +1,22 @@
-build_summary_table <- function(crypto_config, tickers) {
+build_compare_tbl <- function(crypto_config, tickers) {
   
   tbl <- crypto_config %>% 
     dplyr::filter(symbol %in% tickers) %>% 
     dplyr::select(cmc_rank, name, symbol, USD_price, USD_market_cap, USD_volume_24h, 
-                  USD_percent_change_30d, USD_percent_change_60d, USD_percent_change_90d,
+                  USD_percent_change_24h, USD_percent_change_7d, USD_percent_change_30d,
     ) %>% 
+    dplyr::mutate(USD_percent_change_24h = USD_percent_change_24h/100,
+                  USD_percent_change_7d = USD_percent_change_7d/100,
+                  USD_percent_change_30d = USD_percent_change_30d/100) %>% 
     dplyr::rename('Price' = 'USD_price', 
                   'Market Cap' = 'USD_market_cap', 
-                  'Volume_24h' = 'USD_volume_24h',
-                  'Rank_CMC' = 'cmc_rank',
+                  'Volume 24h' = 'USD_volume_24h',
+                  'CMC Rank' = 'cmc_rank',
                   'Name' = 'name',
                   'Symbol' = 'symbol',
-                  'Change_30d' = 'USD_percent_change_30d',
-                  'Change_60d' = 'USD_percent_change_60d', 
-                  'Change_90d' = 'USD_percent_change_90d')
+                  'Change 24h' = 'USD_percent_change_24h',
+                  'Change 7d' = 'USD_percent_change_7d', 
+                  'Change 30d' = 'USD_percent_change_30d')
   
   dt_tbl <- DT::datatable(tbl, 
                           options = list(scrollX = TRUE,
@@ -26,14 +29,18 @@ build_summary_table <- function(crypto_config, tickers) {
                        digits = 2,
                        mark = ",",
                        dec.mark = ".") %>% 
-    DT::formatCurrency(columns = c('Market Cap', 'Volume_24h'),
+    DT::formatCurrency(columns = c('Market Cap', 'Volume 24h'),
                        currency = "$",
                        digits = 0,
                        mark = ",",
                        dec.mark = ".") %>%
-    DT::formatPercentage(columns = c('Change_30d', 'Change_60d', 'Change_90d'),
+    DT::formatPercentage(columns = c('Change 24h', 'Change 7d', 'Change 30d'),
                          digits = 2)
   
   dt_tbl
+  
+}
+
+build_overview_tbl <- function(crypto_config) {
   
 }

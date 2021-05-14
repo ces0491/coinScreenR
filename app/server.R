@@ -9,9 +9,12 @@ server.coinScreenR <- function(input, output, session) {
   output$recent_tweets <- DT::renderDataTable(NULL)
   output$most_popular_tweets <- DT::renderDataTable(NULL)
   output$most_retweeted <- DT::renderDataTable(NULL)
+  output$most_used_words <- DT::renderDataTable(NULL)
+  output$neg_pos_word_count <- DT::renderDataTable(NULL)
   
   output$cmcWidget <- renderUI(NULL)
-  output$correl <- plotly::renderPlotly(NULL)
+  output$correl_mx <- plotly::renderPlotly(NULL)
+  output$correl_ts <- plotly::renderPlotly(NULL)
   
   output$plotForcast <- plotly::renderPlotly(NULL)
   # output$analysisTbl <- renderDataTable(NULL)
@@ -19,9 +22,9 @@ server.coinScreenR <- function(input, output, session) {
   
   observeEvent(input$freqSelect, {
     
-    forc_periods <- dplyr::case_when(input$freqSelect == "daily" ~ "Days",
-                                     input$freqSelect == "weekly" ~ "Weeks",
-                                     input$freqSelect == "monthly" ~ "Months")
+    forc_periods <- dplyr::case_when(input$freqSelect == "1d" ~ "Days",
+                                     input$freqSelect == "1w" ~ "Weeks",
+                                     input$freqSelect == "1M" ~ "Months")
     
     updateNumericInput(inputId = "forcHorizon", label = paste0("Forecast Horizon (", forc_periods, ")"))
     
@@ -32,17 +35,12 @@ server.coinScreenR <- function(input, output, session) {
     c(input$tickerSelect, input$tickerCompare)
   })
   
-  # get meta data
-  crypto_meta <- eventReactive(input$submitBtn, {
-    coinmarketcapr::get_crypto_meta(tickers())
-  })
-  
-  
+
 ########################################################## Sidebar ####################################
   
   # render description for the selected ticker
-  desc_text <- reactive({
-    crypto_meta() %>%
+  desc_text <- eventReactive(input$submitBtn, {
+    crypto_config %>%
       dplyr::filter(symbol == input$tickerSelect) %>% 
       dplyr::pull(description)
   })
@@ -94,42 +92,44 @@ server.coinScreenR <- function(input, output, session) {
       min_dt <- NULL
     }
     
+    if(length(input$tickerCompare) > 0) {
+      tooltip <- paste0("<b>%{text}</b><br>",
+                        "Date: %{x}<br>",
+                        "Rel. Perf: %{y}<br>",
+                        "<extra></extra>")
+    } else {
+      tooltip <- paste0("<b>%{text}</b><br>",
+                        "Date: %{x}<br>",
+                        "Price: %{y}<br>",
+                        "<extra></extra>")
+    }
+    
     ts_plot_data() %...>%
       plotly::plot_ly(., x = ~date, y = ~plot_value, mode = 'lines', linetype = ~ticker,
                       text = ~ticker,
-                      hovertemplate = paste0("<b>%{text}</b><br>",
-                                             "Date: %{x}<br>",
-                                             "Price: %{y}<br>",
-                                             "<extra></extra>")
-      ) %...>% 
+                      hovertemplate = tooltip) %...>% 
       plotly::layout(title = ttl, xaxis = x, yaxis = y) %...>%
       plotly::rangeslider(start = min_dt, end = input$dateRange[2])
     
   })
   
   summ_data <- eventReactive(input$submitBtn, {
-    build_summary_table(crypto_config, tickers = c(input$tickerSelect, input$tickerCompare))
+    build_compare_tbl(crypto_config, tickers = c(input$tickerSelect, input$tickerCompare))
   })
   
   # render summary table
   output$summaryTbl <- DT::renderDataTable({summ_data()})
   
-  # render correl mx
-  corr_data <- eventReactive(input$submitBtn, {
-    
-    reqd_data <- data() %...>% 
-      dplyr::filter(variable == 'close') %...>% 
-      tidyr::spread(ticker, value) %...>% 
-      dplyr::select(-date, -variable)
-    
-   reqd_data %...>% 
-      stats::cor(., use = "pairwise.complete.obs", method = "pearson")
-    
+  # calc correl mx
+  corr_data_mx <- eventReactive(input$submitBtn, {
+   data() %...>%
+     calc_correl(., corr_type = "total")
   })
   
-  output$correl <- plotly::renderPlotly({
+  # render correl mx
+  output$correl_mx <- plotly::renderPlotly({
   
-    corr_data() %...>%
+    corr_data_mx() %...>%
       ggcorrplot::ggcorrplot(.,
                              method = "square",
                              type = "lower",
@@ -138,6 +138,40 @@ server.coinScreenR <- function(input, output, session) {
                              lab = TRUE) %...>%
       plotly::ggplotly()
     
+  })
+  
+  output$corrX <- renderUI({
+    selectizeInput(inputId = "corr_x", 
+                   label = "Rolling Corr Var X", 
+                   choices = paste0(tickers(), input$tickerBase),
+                   multiple = FALSE)
+  })
+  
+  output$corrY <- renderUI({
+    selectizeInput(inputId = "corr_y", 
+                   label = "Rolling Corr Var Y", 
+                   choices = c(paste0(tickers(), input$tickerBase), "median"),
+                   multiple = FALSE)
+  })
+  
+  corr_data_ts <- eventReactive(input$submitBtn, {
+    
+    x <- input$corr_x
+    y <- input$corr_y
+    
+    data() %...>%
+      calc_correl(., corr_type = "roll", .roll_var_x = x, .roll_var_y = y, roll_period = input$rollPeriod)
+  })
+  
+  output$correl_ts <- plotly::renderPlotly({
+    
+    ttl <- "Rolling Correlation"
+    x <- list(title = "")
+    y <- list(title = "Correlation")
+    
+    corr_data_ts() %...>%
+      plotly::plot_ly(., x = ~date, y = ~roll_corr, mode = 'lines') %...>% 
+      plotly::layout(title = ttl, xaxis = x, yaxis = y)
   })
   
   # render coin market cap ticker widget
@@ -187,9 +221,9 @@ server.coinScreenR <- function(input, output, session) {
     })
   
   # get ids of most liked, retweeted and top n
-  most_popular_tweets <- reactive({most_popular(tweet_df())})
-  most_retweeted_tweets <- reactive({most_retweeted(tweet_df())})
-  recent_tweets <- reactive({most_recent(tweet_df())})
+  most_popular_tweets <- reactive({most_popular(tweet_df(), n = 20)})
+  most_retweeted_tweets <- reactive({most_retweeted(tweet_df(), n = 20)})
+  recent_tweets <- reactive({most_recent(tweet_df(), n = 20)})
   
   tibblefy_tweet <- function(id) {
     n <- length(id)
@@ -203,7 +237,7 @@ server.coinScreenR <- function(input, output, session) {
         })
       )
     
-    twt_dt <- DT::datatable(tbl, options = list(lengthMenu = c(1, 3, 5, 10)))
+    twt_dt <- DT::datatable(tbl, options = list(lengthMenu = c(3, 5, 10)))
     })
     
     twt_dt
@@ -218,6 +252,26 @@ server.coinScreenR <- function(input, output, session) {
   output$recent_tweets <- DT::renderDataTable(
     tibblefy_tweet(recent_tweets())
     )
+  
+  tidy_txt <- reactive({
+    tokenize_txt(tweet_df())
+  })
+  
+  top_n_df <- reactive({
+    get_top_n(tidy_txt(), n_top = 10, searched_ticker = tolower(input$tickerSelect))
+  })
+  
+  sentiment_df <- reactive({
+    get_sentiment(tidy_txt(), n_top = 10)
+  })
+  
+  output$most_used_words <- plotly::renderPlotly({
+    plot_top_n_words(top_n_df())
+  })
+  
+  output$neg_pos_word_count <- plotly::renderPlotly({
+    plot_sentiment(sentiment_df())
+  })
   
 ########################################################## Forecast Page ####################################
   

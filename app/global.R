@@ -12,13 +12,19 @@ globalVariables(c("status_id", "id", "created_at", "retweet_count"))
 future::plan(multisession)
 
 source("../R/get_data.R")
+source("../R/stats_functions.R")
 source("../R/plot_functions.R")
 source("../R/table_functions.R")
 source("../R/forecasting_functions.R")
 source("../R/twitter_functions.R")
-# source("../R/sentiment_functions.R")
+source("../R/sentiment_functions.R")
 
 
 # Get a paginated list of all active cryptocurrencies with latest market data, sorted by CMC rank.
 coinmarketcapr::setup(api_key = Sys.getenv("coinmarketcap_api_key"))
-crypto_config <- coinmarketcapr::get_crypto_listings(currency = "USD", latest = TRUE)
+
+crypto_listings <- coinmarketcapr::get_crypto_listings(currency = "USD", latest = TRUE)
+crypto_meta <- coinmarketcapr::get_crypto_meta(crypto_listings$symbol) %>% dplyr::select(-name, -symbol, -slug, -date_added, -tags)
+
+crypto_config <- crypto_listings %>% 
+  dplyr::left_join(crypto_meta, by = "id")

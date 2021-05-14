@@ -58,6 +58,12 @@ sidebar <- shinydashboard::dashboardSidebar(
   column(12, align = "left", offset = 0, div(tags$div(HTML('<h1 style="font-size:20px;">Description</h1>')))),
   column(12, align = "left", offset = 0, htmlOutput(outputId = "descriptionTxt") %>% withSpinner()), #use htmloutput so we can render the output text with html tags
   
+  hr(),
+  
+  column(12, uiOutput("cmcWidget") %>% withSpinner()),
+  
+  br(),
+  
   column(12, align = "left", offset = 0, 
          downloadButton(outputId = "downloadData", 
                         label = "Download", 
@@ -70,6 +76,12 @@ body <- shinydashboard::dashboardBody(
   
   shinydashboard::tabItems(
     shinydashboard::tabItem(tabName = "overview", h2("Overview"),
+                            
+                            fluidPage(
+                              
+                            )
+    ),
+    shinydashboard::tabItem(tabName = "compare", h2("Compare"),
                             
                             fluidPage(
                               
@@ -86,19 +98,41 @@ body <- shinydashboard::dashboardBody(
                               hr(),
                               
                               fluidRow(
+                                column(4, plotly::plotlyOutput("correl_mx") %>% withSpinner()),
+                                column(4, uiOutput("corrX"),
+                                                uiOutput("corrY"),
+                                                numericInput(
+                                                  inputId = "rollPeriod",
+                                                  label = "Rolling Window",
+                                                  value = 30, 
+                                                  min = 0, 
+                                                  max = NA,
+                                                  step = NA),
+                                       plotly::plotlyOutput("correl_ts") %>% withSpinner()  
+                                       )
+                                )
+                            )
+    ),
+    shinydashboard::tabItem(tabName = "sentiment", h2("Sentiment"),
+                            
+                            fluidPage(
+                              fluidRow(
+                                column(8, plotly::plotlyOutput("most_used_words") %>% withSpinner()),
                                 column(4, shinydashboard::tabBox(title = "Tweets", id = "tweets_tabbox", width = 12,
                                                                  tabPanel(icon("retweet"), DT::dataTableOutput("most_retweeted") %>% withSpinner()),
                                                                  tabPanel(icon("heart"), DT::dataTableOutput("most_popular_tweets") %>% withSpinner()),
                                                                  tabPanel(icon("calendar"), DT::dataTableOutput("recent_tweets") %>% withSpinner())
                                                                  )
-                                       ),
-                                column(4, plotly::plotlyOutput("correl") %>% withSpinner()),
-                                column(4, uiOutput("cmcWidget") %>% withSpinner())
-                              )  
+                                       )
+                                ),
+                              hr(),
                               
-                            )
+                              fluidRow(
+                                column(8, plotly::plotlyOutput("neg_pos_word_count") %>% withSpinner())
+                                )
+                              )
+                              
     ),
-    
     shinydashboard::tabItem(tabName = "forecast", h2("Forecast"),
                             
                             fluidPage(

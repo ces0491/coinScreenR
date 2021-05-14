@@ -31,7 +31,7 @@ embed_tweet <- function(id) {
 #'
 #' @importFrom rlang enquo
 #' 
-most <- function(tweets, n = 10, var) {
+most <- function(tweets, n, var) {
   
   var <- rlang::enquo(var)
   
