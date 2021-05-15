@@ -98,39 +98,37 @@ body <- shinydashboard::dashboardBody(
                               hr(),
                               
                               fluidRow(
-                                column(4, plotly::plotlyOutput("correl_mx") %>% withSpinner()),
-                                column(4, uiOutput("corrX"),
-                                                uiOutput("corrY"),
-                                                numericInput(
-                                                  inputId = "rollPeriod",
-                                                  label = "Rolling Window",
-                                                  value = 30, 
-                                                  min = 0, 
-                                                  max = NA,
-                                                  step = NA),
-                                       plotly::plotlyOutput("correl_ts") %>% withSpinner()  
+                                column(6, plotly::plotlyOutput("correl_mx") %>% withSpinner()
+                                       ),
+                                column(6, 
+                                       fluidRow(column(4, uiOutput("corrX")),
+                                                column(4, uiOutput("corrY")),
+                                                column(4, numericInput(inputId = "rollPeriod", label = "Rolling Window", value = 30, min = 0))
+                                         ),
+                                       fluidRow(plotly::plotlyOutput("correl_ts") %>% withSpinner())
                                        )
                                 )
-                            )
+                              )
     ),
     shinydashboard::tabItem(tabName = "sentiment", h2("Sentiment"),
                             
                             fluidPage(
-                              fluidRow(
-                                column(8, plotly::plotlyOutput("most_used_words") %>% withSpinner()),
                                 column(4, shinydashboard::tabBox(title = "Tweets", id = "tweets_tabbox", width = 12,
                                                                  tabPanel(icon("retweet"), DT::dataTableOutput("most_retweeted") %>% withSpinner()),
                                                                  tabPanel(icon("heart"), DT::dataTableOutput("most_popular_tweets") %>% withSpinner()),
                                                                  tabPanel(icon("calendar"), DT::dataTableOutput("recent_tweets") %>% withSpinner())
                                                                  )
+                                       ),
+                                column(8,
+                                       fluidRow(
+                                         column(12, plotly::plotlyOutput("most_used_words") %>% withSpinner())
+                                         ),
+                                       hr(),
+                                       fluidRow(
+                                         column(12, plotly::plotlyOutput("neg_pos_word_count") %>% withSpinner())
+                                         )
                                        )
-                                ),
-                              hr(),
-                              
-                              fluidRow(
-                                column(8, plotly::plotlyOutput("neg_pos_word_count") %>% withSpinner())
                                 )
-                              )
                               
     ),
     shinydashboard::tabItem(tabName = "forecast", h2("Forecast"),

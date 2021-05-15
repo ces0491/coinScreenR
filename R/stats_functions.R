@@ -1,3 +1,42 @@
+calc_static_correl <- function(reqd_data) {
+  corr_out <- reqd_data %>% 
+    dplyr::select(-date) %>% 
+    stats::cor(., use = "pairwise.complete.obs", method = "pearson") 
+  
+  corr_out
+}
+
+calc_roll_correl <- function(reqd_data, .roll_var_x, .roll_var_y, roll_period) {
+  
+  if (is.null(roll_period)) {
+    stop("You need to specify a rolling window to use corr_type 'roll'")
+  }
+  
+  roll_var_x <- dplyr::sym(.roll_var_x)
+  roll_var_y <- dplyr::sym(.roll_var_y)
+  
+  not_x <- setdiff(names(reqd_data)[-1], .roll_var_x)
+  
+  reqd_w_med <- reqd_data %>%
+    tidyr::unite(value_vec, dplyr::all_of(not_x), na.rm = TRUE, remove = FALSE, sep = ",") %>% 
+    dplyr::group_by(date) %>% 
+    dplyr::mutate(median = median(as.numeric(stringr::str_split(value_vec, ",")[[1]]))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(-value_vec)
+  
+  roll_func <- tibbletime::rollify(
+    ~stats::cor(.x, .y, use = "pairwise.complete.obs", method = "pearson"), 
+    window = roll_period)
+  
+  if(.roll_var_y == "median") {
+    corr_out <- reqd_w_med %>% 
+      dplyr::mutate(roll_corr = roll_func(!!roll_var_x, median))  
+  } else {
+    corr_out <- reqd_w_med %>% 
+      dplyr::mutate(roll_corr = roll_func(!!roll_var_x, !!roll_var_y))
+  }
+}
+
 #' calculate correlation using pairwise complete observations
 #'
 #' @param corr_data tbl_df - data for which you wish to determine correlations
@@ -21,39 +60,10 @@ calc_correl <- function(corr_data, corr_type = c("total", "roll"), .roll_var_x =
     tidyr::spread(ticker, value)
   
   if (corr_type == "total") {
-    
-    corr_out <- reqd_data %>% 
-      dplyr::select(-date) %>% 
-      stats::cor(., use = "pairwise.complete.obs", method = "pearson")
-    
+    corr_out <- calc_static_correl(reqd_data)
   } else {
-    if (is.null(roll_period)) {
-      stop("You need to specify a rolling window to use corr_type 'roll'")
-    }
-    
-    roll_var_x <- dplyr::sym(.roll_var_x)
-    roll_var_y <- dplyr::sym(.roll_var_y)
-    
-    not_x <- setdiff(names(reqd_data)[-1], .roll_var_x)
-    # not_x <- dplyr::enquos(.not_x)
-  
-    
-    reqd_w_med <- reqd_data %>%
-      tidyr::unite(value_vec, not_x, na.rm = TRUE, remove = FALSE, sep = ",") %>% 
-      dplyr::group_by(date) %>% 
-      dplyr::mutate(median = median(as.numeric(stringr::str_split(value_vec, ",")[[1]]))) %>% 
-      dplyr::ungroup() %>% 
-      dplyr::select(-value_vec)
-    
-    roll_func <- tibbletime::rollify(
-      ~stats::cor(.x, .y, use = "pairwise.complete.obs", method = "pearson"), 
-      window = roll_period)
-    
-    corr_out <- reqd_w_med %>% 
-      dplyr::mutate(roll_corr = roll_func(!!roll_var_x, !!roll_var_y)) %>%
-      dplyr::mutate(roll_corr_v_median = roll_func(!!roll_var_x, median))
+    corr_out <- calc_roll_correl(reqd_data, .roll_var_x, .roll_var_y, roll_period)
   }
   
   corr_out
 }
-

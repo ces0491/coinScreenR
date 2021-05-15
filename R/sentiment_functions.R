@@ -17,6 +17,7 @@ get_top_n <- function(tidy_txt, n_top = 10, searched_ticker) {
   
   top_n <- tidy_txt %>% 
     dplyr::filter(!stringr::str_detect(word, '#')) %>% 
+    dplyr::filter(!stringr::str_detect(word, 'amp')) %>% 
     dplyr::filter(!stringr::str_detect(word, searched_ticker)) %>% 
     dplyr::count(word, sort = TRUE) %>% 
     dplyr::top_n(n_top) %>% 

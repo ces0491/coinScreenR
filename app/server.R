@@ -154,7 +154,7 @@ server.coinScreenR <- function(input, output, session) {
                    multiple = FALSE)
   })
   
-  corr_data_ts <- eventReactive(input$submitBtn, {
+  corr_data_ts <- eventReactive(c(input$corr_x, input$corr_y, input$rollPeriod), {
     
     x <- input$corr_x
     y <- input$corr_y
@@ -164,13 +164,12 @@ server.coinScreenR <- function(input, output, session) {
   })
   
   output$correl_ts <- plotly::renderPlotly({
-    
     ttl <- "Rolling Correlation"
     x <- list(title = "")
     y <- list(title = "Correlation")
     
     corr_data_ts() %...>%
-      plotly::plot_ly(., x = ~date, y = ~roll_corr, mode = 'lines') %...>% 
+      plotly::plot_ly(., x = ~date, y = ~roll_corr, type = 'scatter', mode = 'lines') %...>% 
       plotly::layout(title = ttl, xaxis = x, yaxis = y)
   })
   

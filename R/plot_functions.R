@@ -53,7 +53,7 @@ plot_top_n_words <- function(top_n_data) {
   p <- p + ggplot2::xlab(NULL)
   p <- p + ggplot2::coord_flip()
   p <- p + ggplot2::theme_minimal()
-  p <- p + ggplot2::labs(x = "Count",
+  p <- p + ggplot2::labs(x = "",
                          y = "Unique Words",
                          title = ttl)
   
