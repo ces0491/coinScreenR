@@ -46,10 +46,69 @@ server.coinScreenR <- function(input, output, session) {
   })
   output$descriptionTxt <- renderText({paste0('<p style="text-align:justify;font-size:14px;">',desc_text(),'</p>')})
   
+  # render coin market cap ticker widget
+  html_string <- eventReactive(input$submitBtn, {
+    
+    ccy_id <- crypto_config %>% dplyr::filter(symbol == input$tickerSelect) %>% dplyr::pull(id)
+    
+    widget_str <- glue::glue('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/currency.js">
+                            </script><div class="coinmarketcap-currency-widget" 
+                            data-currencyid={as.character(ccy_id)} 
+                            data-base="ZAR" 
+                            data-secondary="USD" 
+                            data-ticker="true" 
+                            data-rank="true" 
+                            data-marketcap="true" 
+                            data-volume="true" 
+                            data-statsticker="true" 
+                            data-stats="USD">
+                            </div>')
+    
+    widget_str
+  })
+  
+  output$cmcWidget <- renderUI({
+    tags$div(HTML(html_string()))
+  })
 
 ######################################################### Overview ####################################
   
+  # render coin market cap marquee widget
+  html_string_marquee <- eventReactive(input$submitBtn, {
+    
+    ccy_id <- crypto_config %>% dplyr::filter(cmc_rank <= 10) %>% dplyr::pull(id) # get top 10 ranked cryptos
+    
+    widget_str <- glue::glue('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/coinMarquee.js">
+                             </script><div id="coinmarketcap-widget-marquee" 
+                             coins={as.character(ccy_id)}  
+                             currency="USD" 
+                             theme="light" 
+                             transparent="false" 
+                             show-symbol-logo="true">
+                             </div>')
+    widget_str
+  })
   
+  output$cmcWidgetMarquee <- renderUI({
+    tags$div(HTML(html_string_marquee()))
+  })
+  
+  overview_tbl <- reactive({
+    crypto_config %>% 
+      dplyr::select(symbol, name, cmc_rank, Rating, USD_price, USD_market_cap, circulating_supply, USD_percent_change_24h, logo) %>% 
+      dplyr::rename('Symbol' = 'symbol',
+                    'Name' = 'name',
+                    'CMC Rank' = 'cmc_rank',
+                    'TI Rating' = 'Rating',
+                    'Price' = 'USD_price', 
+                    'Market Cap' = 'USD_market_cap', 
+                    'Circulating Supply' = 'circulating_supply',
+                    'Change 24h' = 'USD_percent_change_24h')
+  })
+  
+  output$overviewTbl <- reactable::renderReactable({
+    build_overview_tbl(overview_tbl())
+  })
     
 ####################################################### Compare Page ####################################
   
@@ -173,30 +232,7 @@ server.coinScreenR <- function(input, output, session) {
       plotly::layout(title = ttl, xaxis = x, yaxis = y)
   })
   
-  # render coin market cap ticker widget
-  html_string <- eventReactive(input$submitBtn, {
-    
-    ccy_id <- crypto_config %>% dplyr::filter(symbol == input$tickerSelect) %>% dplyr::pull(id)
-    
-    widget_str <- glue::glue('<script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/currency.js">
-                            </script><div class="coinmarketcap-currency-widget" 
-                            data-currencyid={as.character(ccy_id)} 
-                            data-base="ZAR" 
-                            data-secondary="USD" 
-                            data-ticker="true" 
-                            data-rank="true" 
-                            data-marketcap="true" 
-                            data-volume="true" 
-                            data-statsticker="true" 
-                            data-stats="USD">
-                            </div>')
-    
-    widget_str
-  })
-  
-  output$cmcWidget <- renderUI({
-    tags$div(HTML(html_string()))
-  })
+
 
   
   ######################################################### twitter stuff ##############################

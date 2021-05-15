@@ -78,7 +78,15 @@ body <- shinydashboard::dashboardBody(
     shinydashboard::tabItem(tabName = "overview", h2("Overview"),
                             
                             fluidPage(
+                              fluidRow(
+                                column(12, uiOutput("cmcWidgetMarquee") %>% withSpinner()),  
+                              ),
                               
+                              hr(),
+                              
+                              fluidRow(
+                                column(12, reactable::reactableOutput("overviewTbl") %>% withSpinner())
+                              )
                             )
     ),
     shinydashboard::tabItem(tabName = "compare", h2("Compare"),

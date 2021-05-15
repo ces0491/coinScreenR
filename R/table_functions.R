@@ -41,6 +41,54 @@ build_compare_tbl <- function(crypto_config, tickers) {
   
 }
 
+#################################################################################
+
+format_pct <- function(value) {
+  formatC(paste0(round(value * 100), "%"), width = 4)
+}
+
+format_usd <- function() {
+  formatC(paste0("$", round(value)), width = 4)
+}
+
+make_color_pal <- function(colors, bias = 1) {
+  get_color <- grDevices::colorRamp(colors, bias = bias)
+  function(x) grDevices::rgb(get_color(x), maxColorValue = 255)
+}
+
+pct_color <- make_color_pal(c("#ffffff", "#f2fbd2", "#c9ecb4", "#93d3ab", "#35b0ab"), bias = 2)
+
 build_overview_tbl <- function(crypto_config) {
+  
+
+  
+  tbl <- reactable::reactable(
+    reqd_data,
+    pagination = TRUE,
+    defaultSorted = "CMC Rank",
+    defaultSortOrder = "asc",
+    defaultColDef = reactable::colDef(class = "cell", headerClass = "header"),
+    
+    columns = list(
+      Symbol = reactable::colDef(
+        minWidth = 200,
+        headerStyle = list(fontWeight = 700), 
+        cell = function(value) {
+          htmltools::div(
+            class = "Symbol",
+            htmltools::img(class = "logo", src = reqd_data[Symbol == value, logo]),
+            htmltools::div(class = "Symbol-name", value)
+          )
+        }
+      ),
+      logo = reactable::colDef(show = FALSE)
+    ),
+
+    showSortIcon = FALSE,
+    borderless = TRUE,
+    class = "cryptoSumm-table"
+  )
+  
+  tbl
   
 }

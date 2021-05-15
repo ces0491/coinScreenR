@@ -25,6 +25,8 @@ coinmarketcapr::setup(api_key = Sys.getenv("coinmarketcap_api_key"))
 
 crypto_listings <- coinmarketcapr::get_crypto_listings(currency = "USD", latest = TRUE)
 crypto_meta <- coinmarketcapr::get_crypto_meta(crypto_listings$symbol) %>% dplyr::select(-name, -symbol, -slug, -date_added, -tags)
+crypto_ratings <- readRDS('../inst/extdata/crypto_rating.rds')
 
 crypto_config <- crypto_listings %>% 
-  dplyr::left_join(crypto_meta, by = "id")
+  dplyr::left_join(crypto_meta, by = "id") %>% 
+  dplyr::left_join(crypto_ratings, by = "symbol")
