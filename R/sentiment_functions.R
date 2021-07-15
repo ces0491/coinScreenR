@@ -39,7 +39,29 @@ get_sentiment <- function(tidy_txt, n_top = 10) {
   bing_word_counts
 }
 
+twts <- rtweet::search_tweets(q = 'BTC', 
+                              n = 500, 
+                              include_rts = TRUE,
+                              filter = "verified", 
+                              lang = "en")
+
+twts_with_pol <- twts %>% 
+  dplyr::select(user_id, created_at, screen_name, text) %>% 
+  sentimentr::get_sentences() %>% 
+  sentimentr::sentiment() %>% 
+  dplyr::mutate(polarity_level = ifelse(sentiment < 0.1, "Negative",
+                                        ifelse(sentiment > 0.1, "Positive",
+                                               "Neutral")))
+
+twts_with_pol %>% 
+  dplyr::count(sentiment, polarity_level) %>% 
+  ggplot2::ggplot() + ggplot2::geom_col(ggplot2::aes(x = sentiment, y = n, fill = polarity_level)) +
+  ggplot2::theme_minimal()
+
+twts_with_pol %>% 
+  ggplot2::ggplot() + ggplot2::geom_boxplot(ggplot2::aes(y = polarity_level, x = sentiment))
 
 
-  
-
+twts_with_pol %>% 
+  sentimentr::sentiment_by(by = NULL) %>% #View()
+  ggplot2::ggplot() + ggplot2::geom_density(ggplot2::aes(ave_sentiment))
